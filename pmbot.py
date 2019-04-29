@@ -1,0 +1,142 @@
+import pm
+import random
+import requests
+import telebot
+from telebot import types
+from decouple import config
+
+# general strings
+OK_MESSAGES = ["Understood", "I'm on it!", "Let's do this, ok"]
+DONE_MENU = "\u2705 Done!"
+
+API_TOKEN = config('API_TOKEN')
+
+STATUS_TYPING = "typing"
+STATUS_UPLOAD_PICTURE = "upload_photo"
+
+bot = telebot.TeleBot(API_TOKEN)
+lock = dict()
+
+
+def start_processing(message, no_positive_message=False):
+    chat_id = message.chat.id
+    if chat_id in lock and lock[chat_id]:
+        bot.reply_to(message, "I'm already busy right now!\nPlease wait for the previous command to complete \u23F3")
+        return True
+    if not no_positive_message:
+        bot.send_message(chat_id, random.choice(OK_MESSAGES))
+    lock[chat_id] = True
+    return False
+
+
+def end_processing(message):
+    lock[message.chat.id] = False
+
+
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    bot.reply_to(message, "Hi, and welcome to the Process Mining Bot!")
+
+
+@bot.message_handler(content_types=['document'])
+def new_log_file(message):
+    if message.document.mime_type == "application/gzip" or message.document.mime_type == "application/x-gzip":
+        bot.send_chat_action(message.chat.id, STATUS_TYPING)
+        file_info = bot.get_file(message.document.file_id)
+        file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
+        pm.set_log(message.chat.id, file.content, message.document.file_name)
+        bot.send_message(message.chat.id, "Thanks, I received the new log!")
+    else:
+        bot.reply_to(message, "Currently, only <code>.xes.gz</code> files are supported, sorry!", parse_mode="html")
+
+
+@bot.message_handler(commands=['describeLog'])
+def describe_log(message):
+    if start_processing(message): return
+    bot.send_chat_action(message.chat.id, STATUS_TYPING)
+    description = pm.describe_log(message.chat.id)
+    textual_description = "<b>Total number of traces:</b> " + str(description["traces"]) + "\n"
+    textual_description += "<b>Activities with frequencies</b>:\n"
+    for a in description["acts_freq"]:
+        textual_description += " - " + a + ": " + str(description["acts_freq"][a]) + "\n"
+    bot.send_message(message.chat.id, textual_description, parse_mode="html")
+    bot.send_chat_action(message.chat.id, STATUS_UPLOAD_PICTURE)
+    if description["case_duration"] is not None:
+        bot.send_photo(message.chat.id, open(description["case_duration"], "rb"))
+    if description["events_over_time"] is not None:
+        bot.send_photo(message.chat.id, open(description["events_over_time"], "rb"))
+    end_processing(message)
+
+
+@bot.message_handler(commands=['alpha'])
+def alpha_miner(message):
+    if start_processing(message): return
+    bot.send_chat_action(message.chat.id, STATUS_UPLOAD_PICTURE)
+    model = pm.bot_alpha_miner(message.chat.id)
+    bot.send_photo(message.chat.id, open(model, "rb"))
+    end_processing(message)
+
+
+@bot.message_handler(commands=['dfg'])
+def dependency_graph(message):
+    if start_processing(message): return
+    bot.send_chat_action(message.chat.id, STATUS_UPLOAD_PICTURE)
+    model = pm.bot_dfg(message.chat.id)
+    bot.send_photo(message.chat.id, open(model, "rb"))
+    end_processing(message)
+
+
+@bot.message_handler(commands=['hm'])
+def hm(message):
+    if start_processing(message): return
+    args = message.text.split()
+    dep_threshold = 0.99
+    if len(args) == 2:
+        try:
+            dep_threshold = float(args[1])
+        except ValueError:
+            pass
+    bot.send_chat_action(message.chat.id, STATUS_UPLOAD_PICTURE)
+    models = pm.bot_hm(message.chat.id, dependency_threshold=dep_threshold)
+    for m in models:
+        bot.send_photo(message.chat.id, open(m, "rb"))
+    end_processing(message)
+
+
+@bot.message_handler(commands=['keepActivities'])
+def filter_per_activities_to_keep(message):
+
+    def _filter(msg):
+        if msg.text == DONE_MENU:
+            if start_processing(message, no_positive_message=True): return
+            bot.send_message(chat_id, random.choice(OK_MESSAGES), reply_markup=types.ReplyKeyboardRemove(selective=False))
+            pm.filter_per_activities_to_keep(replied_message.chat.id, activities_to_keep)
+            bot.send_message(message.chat.id, "Filter applied")
+            end_processing(message)
+        else:
+            activities_to_keep.append(msg.text)
+            bot.register_next_step_handler(msg, _filter)
+
+    if start_processing(message, no_positive_message=True): return
+    activities_to_keep = []
+    chat_id = message.chat.id
+    activities = pm.get_all_activities(chat_id)
+    markup = types.ReplyKeyboardMarkup(row_width=1)
+    for a in activities:
+        markup.add(a)
+    markup.add(DONE_MENU)
+    replied_message = bot.send_message(chat_id, "Select which activities you want to keep:", reply_markup=markup)
+    bot.register_next_step_handler(replied_message, _filter)
+    end_processing(message)
+
+
+@bot.message_handler(commands=['removeFilters'])
+def revert_filter(message):
+    if start_processing(message, no_positive_message=True): return
+    chat_id = message.chat.id
+    pm.set_property(chat_id, "current_log", pm.get_log_filename(chat_id, False))
+    end_processing(message)
+
+
+print("Started")
+bot.polling()
