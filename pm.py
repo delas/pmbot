@@ -47,7 +47,7 @@ def get_log_filename(chat_id, filtered=False):
     if filtered:
         return "logs/" + str(chat_id) + "_filtered.xes.gz"
     else:
-        return "logs/" + str(chat_id) + "_current.xes.gz"
+        return "logs/" + str(chat_id) + ".xes.gz"
 
 
 def set_log(chat_id, log, original_name):

@@ -4,6 +4,7 @@ import requests
 import telebot
 from telebot import types
 from decouple import config
+from shutil import copyfile
 
 # general strings
 OK_MESSAGES = ["Understood", "I'm on it!", "Let's do this, ok"]
@@ -35,11 +36,17 @@ def end_processing(message):
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "Hi, and welcome to the Process Mining Bot!")
+    chat_id = message.chat.id
+    bot.send_message(chat_id, "Hi, and welcome to the Process Mining Bot!")
+    bot.send_message(chat_id, "Let me start our conversation by sharing a dummy log that you can use to test my capabilities...")
+    bot.send_document(chat_id, open("logs/firstLog.xes.gz", "rb"))
+    copyfile("logs/firstLog.xes.gz", pm.get_log_filename(chat_id))
+    bot.send_message(chat_id, "If you want, you can also share another log with me, simply by uploading it here")
 
 
 @bot.message_handler(content_types=['document'])
 def new_log_file(message):
+    print(message)
     if message.document.mime_type == "application/gzip" or message.document.mime_type == "application/x-gzip":
         bot.send_chat_action(message.chat.id, STATUS_TYPING)
         file_info = bot.get_file(message.document.file_id)
@@ -47,10 +54,10 @@ def new_log_file(message):
         pm.set_log(message.chat.id, file.content, message.document.file_name)
         bot.send_message(message.chat.id, "Thanks, I received the new log!")
     else:
-        bot.reply_to(message, "Currently, only <code>.xes.gz</code> files are supported, sorry!", parse_mode="html")
+        bot.reply_to(message, "Currently, I support only <code>.xes.gz</code> files, sorry!", parse_mode="html")
 
 
-@bot.message_handler(commands=['describeLog'])
+@bot.message_handler(commands=['describelog'])
 def describe_log(message):
     if start_processing(message): return
     bot.send_chat_action(message.chat.id, STATUS_TYPING)
@@ -103,7 +110,7 @@ def hm(message):
     end_processing(message)
 
 
-@bot.message_handler(commands=['keepActivities'])
+@bot.message_handler(commands=['keepactivities'])
 def filter_per_activities_to_keep(message):
 
     def _filter(msg):
@@ -111,7 +118,7 @@ def filter_per_activities_to_keep(message):
             if start_processing(message, no_positive_message=True): return
             bot.send_message(chat_id, random.choice(OK_MESSAGES), reply_markup=types.ReplyKeyboardRemove(selective=False))
             pm.filter_per_activities_to_keep(replied_message.chat.id, activities_to_keep)
-            bot.send_message(message.chat.id, "Filter applied")
+            bot.send_message(message.chat.id, "I applied the filter")
             end_processing(message)
         else:
             activities_to_keep.append(msg.text)
@@ -130,11 +137,12 @@ def filter_per_activities_to_keep(message):
     end_processing(message)
 
 
-@bot.message_handler(commands=['removeFilters'])
+@bot.message_handler(commands=['removefilters'])
 def revert_filter(message):
     if start_processing(message, no_positive_message=True): return
     chat_id = message.chat.id
     pm.set_property(chat_id, "current_log", pm.get_log_filename(chat_id, False))
+    bot.send_message(message.chat.id, "I restored the log to its original form")
     end_processing(message)
 
 
