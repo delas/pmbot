@@ -41,6 +41,8 @@ def send_welcome(message):
     bot.send_message(chat_id, "Let me start our conversation by sharing a dummy log that you can use to test my capabilities...")
     bot.send_document(chat_id, open("logs/firstLog.xes.gz", "rb"))
     copyfile("logs/firstLog.xes.gz", pm.get_log_filename(chat_id))
+    pm.set_property(chat_id, "current_log", pm.get_log_filename(chat_id))
+    pm.set_property(chat_id, "log_original_name", "firstLog.xes.gz")
     bot.send_message(chat_id, "If you want, you can also share another log with me, simply by uploading it here")
 
 
