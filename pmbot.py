@@ -139,6 +139,18 @@ def relative_dotted_chart(message):
     end_processing(message)
 
 
+@bot.message_handler(commands=['precedencematrix'])
+def precedence_matrix(message):
+    if start_processing(message): return
+    new_file, filename = tempfile.mkstemp(suffix="png")
+    subprocess.run([R_SCRIPT,
+                    R_SCRIPTS_FOLDER + "precedence_matrix.R",
+                    pm.get_property(message.chat.id, "current_log"),
+                    filename])
+    bot.send_photo(message.chat.id, open(filename, "rb"))
+    end_processing(message)
+
+
 @bot.message_handler(commands=['keepactivities'])
 def filter_per_activities_to_keep(message):
 
