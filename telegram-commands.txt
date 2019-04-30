@@ -1,0 +1,10 @@
+start - Starts a new session
+describelog - General log statistics
+hm - [DEP_THR] Heuristics Miner algorithm
+alpha - Alpha Miner algorithm
+dfg - Direct Following Graph
+precedencematrix - Precedence matrix
+dottedchart - Dotted chart with absolute time
+relativedottedchart - Dotted chart with relative time
+keepactivities - Filter to keep only some activities
+removefilters - Reset the log
