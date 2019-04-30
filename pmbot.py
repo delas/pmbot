@@ -52,7 +52,6 @@ def send_welcome(message):
 
 @bot.message_handler(content_types=['document'])
 def new_log_file(message):
-    print(message)
     if message.document.mime_type == "application/gzip" or message.document.mime_type == "application/x-gzip":
         bot.send_chat_action(message.chat.id, STATUS_TYPING)
         file_info = bot.get_file(message.document.file_id)
