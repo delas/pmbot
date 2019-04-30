@@ -1,8 +1,10 @@
 import pm
 import random
 import requests
+import subprocess
 import telebot
 from telebot import types
+import tempfile
 from decouple import config
 from shutil import copyfile
 
@@ -11,6 +13,8 @@ OK_MESSAGES = ["Understood", "I'm on it!", "Let's do this, ok"]
 DONE_MENU = "\u2705 Done!"
 
 API_TOKEN = config('API_TOKEN')
+R_SCRIPT = config('R_SCRIPT')
+R_SCRIPTS_FOLDER = config('R_SCRIPTS_FOLDER')
 
 STATUS_TYPING = "typing"
 STATUS_UPLOAD_PICTURE = "upload_photo"
@@ -109,6 +113,30 @@ def hm(message):
     models = pm.bot_hm(message.chat.id, dependency_threshold=dep_threshold)
     for m in models:
         bot.send_photo(message.chat.id, open(m, "rb"))
+    end_processing(message)
+
+
+@bot.message_handler(commands=['dottedchart'])
+def dotted_chart(message):
+    if start_processing(message): return
+    new_file, filename = tempfile.mkstemp(suffix="png")
+    subprocess.run([R_SCRIPT,
+                    R_SCRIPTS_FOLDER + "static_dotted_chart.R",
+                    pm.get_property(message.chat.id, "current_log"),
+                    filename])
+    bot.send_photo(message.chat.id, open(filename, "rb"))
+    end_processing(message)
+
+
+@bot.message_handler(commands=['relativedottedchart'])
+def relative_dotted_chart(message):
+    if start_processing(message): return
+    new_file, filename = tempfile.mkstemp(suffix="png")
+    subprocess.run([R_SCRIPT,
+                    R_SCRIPTS_FOLDER + "relative_dotted_chart.R",
+                    pm.get_property(message.chat.id, "current_log"),
+                    filename])
+    bot.send_photo(message.chat.id, open(filename, "rb"))
     end_processing(message)
 
 
