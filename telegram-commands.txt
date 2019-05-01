@@ -4,7 +4,8 @@ hm - [DEP_THR] Heuristics Miner algorithm
 alpha - Alpha Miner algorithm
 dfg - Direct Following Graph
 precedencematrix - Precedence matrix
-dottedchart - Dotted chart with absolute time
-relativedottedchart - Dotted chart with relative time
-keepactivities - Filter to keep only some activities
-removefilters - Reset the log
+dottedchart - Plots dot chart with absolute time
+relativedottedchart - Plots dot chart with relative time
+resources - Plots usage of resources
+keepactivities - Filters to keep only some activities
+removefilters - Resets the log
