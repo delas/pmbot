@@ -1,7 +1,6 @@
 import json
 import os
 import datetime
-import time
 import tempfile
 
 from pm4py.objects.log.importer.xes import factory as xes_importer
@@ -10,8 +9,6 @@ from pm4py.objects.log.exporter.xes import factory as xes_exporter
 from pm4py.algo.discovery.alpha import factory as alpha_miner
 from pm4py.visualization.petrinet import factory as vis_factory
 from pm4py.visualization.graphs import factory as graphs_vis_factory
-from pm4py.util import constants
-from pm4py.visualization.common import save as gsave
 from pm4py.statistics.traces.log import case_statistics
 import pm4py.objects.log.util
 
@@ -29,7 +26,7 @@ from pm4py.visualization.petrinet import factory as pn_vis_factory
 def get_properties(chat_id):
     if os.path.isfile("configs/" + str(chat_id) + ".json"):
         return json.load(open("configs/" + str(chat_id) + ".json", "r"))
-    return dict()
+    return {"registered": False}
 
 
 def get_property(chat_id, prop):
