@@ -213,13 +213,18 @@ def filter_per_activities_to_keep(message):
     if check_registration(message):
         def _filter(msg):
             if msg.text == DONE_MENU:
-                if start_processing(message, no_positive_message=True): return
-                bot.send_chat_action(message.chat.id, STATUS_TYPING)
-                bot.send_message(chat_id, random.choice(OK_MESSAGES), reply_markup=types.ReplyKeyboardRemove(selective=False))
-                pm.filter_per_activities_to_keep(replied_message.chat.id, activities_to_keep)
-                bot.send_chat_action(message.chat.id, STATUS_TYPING)
-                bot.send_message(message.chat.id, "I applied the filter")
-                end_processing(message)
+                if len(activities_to_keep) > 0:
+                    if start_processing(message, no_positive_message=True): return
+                    bot.send_chat_action(message.chat.id, STATUS_TYPING)
+                    bot.send_message(chat_id, random.choice(OK_MESSAGES), reply_markup=types.ReplyKeyboardRemove(selective=False))
+                    pm.filter_per_activities_to_keep(replied_message.chat.id, activities_to_keep)
+                    bot.send_chat_action(message.chat.id, STATUS_TYPING)
+                    bot.send_message(message.chat.id, "I applied the filter")
+                    end_processing(message)
+                else:
+                    bot.send_chat_action(message.chat.id, STATUS_TYPING)
+                    bot.reply_to(msg, "Ooops, no activities selected")
+                    bot.register_next_step_handler(msg, _filter)
             else:
                 activities_to_keep.append(msg.text)
                 bot.register_next_step_handler(msg, _filter)
