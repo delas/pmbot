@@ -8,3 +8,4 @@ The current version of the bot uses:
 * pyTelegramBotAPI (https://github.com/eternnoir/pyTelegramBotAPI)
 * pm4py (http://pm4py.pads.rwth-aachen.de/)
 * bupaR (https://www.bupar.net/)
+* ProM (http://www.promtools.org/)
