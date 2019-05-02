@@ -1,4 +1,5 @@
 import pm
+import promexecutor
 import random
 import rexecutor
 import requests
@@ -22,6 +23,7 @@ DONE_MENU = "\u2705 Done!"
 API_TOKEN = config('API_TOKEN')
 R_SCRIPT = config('R_SCRIPT')
 R_SCRIPTS_FOLDER = config('R_SCRIPTS_FOLDER')
+PROM_LITE=config('PROM_LITE')
 MAX_FILE_SIZE_IN_MB = int(config('MAX_FILE_SIZE_IN_MB'))
 REGISTRATION_CODE = config('REGISTRATION_CODE')
 
@@ -160,6 +162,16 @@ def hm(message):
         end_processing(message)
 
 
+@bot.message_handler(commands=['im'])
+def bot_inductive_miner(message):
+    if check_registration(message):
+        if start_processing(message): return
+        pic_file = promexecutor.inductive_miner(PROM_LITE, message.chat.id)
+        bot.send_chat_action(message.chat.id, STATUS_UPLOAD_PICTURE)
+        bot.send_photo(message.chat.id, open(pic_file, "rb"))
+        end_processing(message)
+
+
 @bot.message_handler(commands=['dottedchart'])
 def dotted_chart(message):
     if check_registration(message):
@@ -256,3 +268,4 @@ def revert_filter(message):
 
 print("Started")
 bot.polling()
+
