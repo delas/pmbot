@@ -22,6 +22,7 @@ DONE_MENU = "\u2705 Done!"
 API_TOKEN = config('API_TOKEN')
 R_SCRIPT = config('R_SCRIPT')
 R_SCRIPTS_FOLDER = config('R_SCRIPTS_FOLDER')
+MAX_FILE_SIZE_IN_MB = int(config('MAX_FILE_SIZE_IN_MB'))
 
 STATUS_TYPING = "typing"
 STATUS_UPLOAD_PICTURE = "upload_photo"
@@ -63,10 +64,10 @@ def send_welcome(message):
             bot.send_chat_action(message.chat.id, STATUS_TYPING)
             bot.send_message(chat_id, "Excellent, thanks!")
             bot.send_message(chat_id, "Let me start our conversation by sharing a dummy log that you can use to test my capabilities...")
-            bot.send_document(chat_id, open("logs/firstLog.xes.gz", "rb"))
-            copyfile("logs/firstLog.xes.gz", pm.get_log_filename(chat_id))
+            bot.send_document(chat_id, open("logs/firstLog.xes", "rb"))
+            copyfile("logs/firstLog.xes", pm.get_log_filename(chat_id))
             pm.set_property(chat_id, "current_log", pm.get_log_filename(chat_id))
-            pm.set_property(chat_id, "log_original_name", "firstLog.xes.gz")
+            pm.set_property(chat_id, "log_original_name", "firstLog.xes")
             bot.send_message(chat_id, "If you want, you can also share another log with me, simply by uploading it here")
             pm.set_property(chat_id, "registered", True)
         else:
@@ -82,20 +83,22 @@ def send_welcome(message):
     bot.register_next_step_handler(license, _registration)
 
 
-
-
 @bot.message_handler(content_types=['document'])
 def new_log_file(message):
     if check_registration(message):
-        if message.document.mime_type == "application/gzip" or message.document.mime_type == "application/x-gzip":
-            file_info = bot.get_file(message.document.file_id)
-            file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
-            pm.set_log(message.chat.id, file.content, message.document.file_name)
-            bot.send_chat_action(message.chat.id, STATUS_TYPING)
-            bot.send_message(message.chat.id, "Thanks, I received the new log!")
+        if message.document.mime_type == "application/xml" and message.document.file_name.split(".")[-1] == "xes":
+            if int(message.document.file_size) <= (MAX_FILE_SIZE_IN_MB * 1000000):
+                file_info = bot.get_file(message.document.file_id)
+                file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
+                pm.set_log(message.chat.id, file.content, message.document.file_name)
+                bot.send_chat_action(message.chat.id, STATUS_TYPING)
+                bot.send_message(message.chat.id, "Thanks, I received the new log!")
+            else:
+                bot.send_chat_action(message.chat.id, STATUS_TYPING)
+                bot.reply_to(message, "Ops, currently, I support only files smaller than " + str(MAX_FILE_SIZE_IN_MB) + "MB")
         else:
             bot.send_chat_action(message.chat.id, STATUS_TYPING)
-            bot.reply_to(message, "Currently, I support only <code>.xes.gz</code> files, sorry!", parse_mode="html")
+            bot.reply_to(message, "Currently, I support only <code>.xes</code> files, sorry!", parse_mode="html")
 
 
 @bot.message_handler(commands=['describelog'])
@@ -239,9 +242,9 @@ def revert_filter(message):
     if check_registration(message):
         if start_processing(message, no_positive_message=True): return
         chat_id = message.chat.id
-        pm.set_property(chat_id, "current_log", pm.get_log_filename(chat_id, False))
-        bot.send_chat_action(message.chat.id, STATUS_TYPING)
-        bot.send_message(message.chat.id, "I restored the log to its original form")
+        pm.reset_filter(chat_id)
+        bot.send_chat_action(chat_id, STATUS_TYPING)
+        bot.send_message(chat_id, "I restored the log to its original form")
         end_processing(message)
 
 

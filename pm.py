@@ -42,9 +42,9 @@ def set_property(chat_id, prop, value):
 
 def get_log_filename(chat_id, filtered=False):
     if filtered:
-        return "logs/" + str(chat_id) + "_filtered.xes.gz"
+        return "logs/" + str(chat_id) + "_filtered.xes"
     else:
-        return "logs/" + str(chat_id) + ".xes.gz"
+        return "logs/" + str(chat_id) + ".xes"
 
 
 def set_log(chat_id, log, original_name):
@@ -110,7 +110,7 @@ def bot_dfg(chat_id):
     return filename
 
 
-def bot_hm(chat_id, dependency_threshold = 0.99):
+def bot_hm(chat_id, dependency_threshold=0.99):
     log = get_current_log(chat_id)
     heu_net = heuristics_miner.apply_heu(log, parameters={"dependency_thresh": dependency_threshold})
     gviz = hn_vis_factory.apply(heu_net)
@@ -128,5 +128,10 @@ def bot_hm(chat_id, dependency_threshold = 0.99):
 def filter_per_activities_to_keep(chat_id, activities):
     log = get_current_log(chat_id)
     tracefilter_log_pos = attributes_filter.apply_events(log, activities, parameters={constants.PARAMETER_CONSTANT_ATTRIBUTE_KEY: "concept:name", "positive": True})
-    xes_exporter.export_log(tracefilter_log_pos, get_log_filename(chat_id, True)[:-3], parameters={"compress": True})
+    xes_exporter.export_log(tracefilter_log_pos, get_log_filename(chat_id, True), parameters={"compress": False})
     set_property(chat_id, "current_log", get_log_filename(chat_id, True))
+
+
+def reset_filter(chat_id):
+    set_property(chat_id, "current_log", get_log_filename(chat_id, False))
+    os.remove(get_log_filename(chat_id, True))
