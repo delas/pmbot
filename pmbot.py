@@ -23,6 +23,7 @@ API_TOKEN = config('API_TOKEN')
 R_SCRIPT = config('R_SCRIPT')
 R_SCRIPTS_FOLDER = config('R_SCRIPTS_FOLDER')
 MAX_FILE_SIZE_IN_MB = int(config('MAX_FILE_SIZE_IN_MB'))
+REGISTRATION_CODE = config('REGISTRATION_CODE')
 
 STATUS_TYPING = "typing"
 STATUS_UPLOAD_PICTURE = "upload_photo"
@@ -60,7 +61,7 @@ def end_processing(message):
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     def _registration(message):
-        if message.text == "1":
+        if message.text == REGISTRATION_CODE:
             bot.send_chat_action(message.chat.id, STATUS_TYPING)
             bot.send_message(chat_id, "Excellent, thanks!")
             bot.send_message(chat_id, "Let me start our conversation by sharing a dummy log that you can use to test my capabilities...")
@@ -79,7 +80,7 @@ def send_welcome(message):
     bot.send_chat_action(message.chat.id, STATUS_TYPING)
     bot.send_message(chat_id, "Hi " + message.from_user.first_name + ", and welcome to the Process Mining Bot!")
     markup = types.ForceReply(selective=False)
-    license = bot.send_message(chat_id, "I need to know your license code: (a valid code is \"1\")", reply_markup=markup)
+    license = bot.send_message(chat_id, "I need to know your license code: (a valid code is \""+ REGISTRATION_CODE +"\")", reply_markup=markup)
     bot.register_next_step_handler(license, _registration)
 
 
