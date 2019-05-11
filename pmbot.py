@@ -4,6 +4,9 @@ import random
 import rexecutor
 import requests
 import telebot
+import tempfile
+import zipfile
+
 from telebot import types
 from decouple import config
 from shutil import copyfile
@@ -88,20 +91,64 @@ def send_welcome(message):
 
 @bot.message_handler(content_types=['document'])
 def new_log_file(message):
+    chat_id = message.chat.id
     if check_registration(message):
         if message.document.mime_type == "application/xml" and message.document.file_name.split(".")[-1] == "xes":
             if int(message.document.file_size) <= (MAX_FILE_SIZE_IN_MB * 1000000):
                 file_info = bot.get_file(message.document.file_id)
                 file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
                 pm.set_log(message.chat.id, file.content, message.document.file_name)
-                bot.send_chat_action(message.chat.id, STATUS_TYPING)
-                bot.send_message(message.chat.id, "Thanks, I received the new log!")
+                bot.send_chat_action(chat_id, STATUS_TYPING)
+                bot.send_message(chat_id, "Thanks, I received the new log!")
+            else:
+                bot.send_chat_action(chat_id, STATUS_TYPING)
+                bot.reply_to(message, "Ops, currently, I support only files smaller than " + str(MAX_FILE_SIZE_IN_MB) + "MB")
+        elif message.document.mime_type == "application/zip" and message.document.file_name.split(".")[-1] == "zip":
+            if int(message.document.file_size) <= (MAX_FILE_SIZE_IN_MB * 1000000):
+                file_info = bot.get_file(message.document.file_id)
+                file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
+                new_file, tmp_zip = tempfile.mkstemp()
+                open(tmp_zip, 'wb').write(file.content)
+                is_encrypted = False
+                zf = zipfile.ZipFile(tmp_zip)
+                if len(zf.namelist()) != 1 or zf.namelist()[0].split(".")[-1] != "xes":
+                    bot.send_chat_action(message.chat.id, STATUS_TYPING)
+                    bot.reply_to(message, "Ops, the <code>.zip</code> file should contain just one file, <code>.xes</code> file!", parse_mode="html")
+                else:
+
+                    for z_info in zf.infolist():
+                        is_encrypted = z_info.flag_bits & 0x1
+                    if is_encrypted:
+                        def _pwd(message_rep):
+                            try:
+                                file_content_2 = zf.read(zf.namelist()[0], pwd=message_rep.text.encode('cp850','replace'))
+                                pm.set_log(message.chat.id, file_content_2, zf.namelist()[0])
+                                bot.send_chat_action(message.chat.id, STATUS_TYPING)
+                                bot.send_message(message.chat.id, "Thanks, I received the new log!")
+                            except RuntimeError as e:
+                                bot.send_chat_action(message.chat.id, STATUS_TYPING)
+                                bot.send_message(message.chat.id, str(e))
+                                bot.send_chat_action(chat_id, STATUS_TYPING)
+                                markup = types.ForceReply(selective=False)
+                                pwd_msg = bot.send_message(chat_id, "Enter the password for the <code>.zip</code> file:", reply_markup=markup, parse_mode="html")
+                                bot.register_next_step_handler(pwd_msg, _pwd)
+
+                        bot.send_chat_action(chat_id, STATUS_TYPING)
+                        markup = types.ForceReply(selective=False)
+                        pwd_msg = bot.send_message(chat_id, "The <code>.zip</code> file is encrypted, please write me the password:", reply_markup=markup, parse_mode="html")
+                        bot.register_next_step_handler(pwd_msg, _pwd)
+
+                    else:
+                        file_content = zf.read(zf.namelist()[0])
+                        pm.set_log(message.chat.id, file_content, zf.namelist()[0])
+                        bot.send_chat_action(message.chat.id, STATUS_TYPING)
+                        bot.send_message(message.chat.id, "Thanks, I received the new log!")
             else:
                 bot.send_chat_action(message.chat.id, STATUS_TYPING)
                 bot.reply_to(message, "Ops, currently, I support only files smaller than " + str(MAX_FILE_SIZE_IN_MB) + "MB")
         else:
             bot.send_chat_action(message.chat.id, STATUS_TYPING)
-            bot.reply_to(message, "Currently, I support only <code>.xes</code> files, sorry!", parse_mode="html")
+            bot.reply_to(message, "Currently, I support only <code>.xes</code> or <code>.zip</code> files, sorry!", parse_mode="html")
 
 
 @bot.message_handler(commands=['describelog'])
@@ -268,4 +315,3 @@ def revert_filter(message):
 
 print("Started")
 bot.polling()
-
