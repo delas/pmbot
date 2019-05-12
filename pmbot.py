@@ -5,6 +5,7 @@ import rexecutor
 import requests
 import telebot
 import tempfile
+import tracker
 import zipfile
 
 from telebot import types
@@ -82,6 +83,7 @@ def send_welcome(message):
             pm.set_property(chat_id, "registered", False)
 
     chat_id = message.chat.id
+    tracker.track(chat_id, "start")
     bot.send_chat_action(message.chat.id, STATUS_TYPING)
     bot.send_message(chat_id, "Hi " + message.from_user.first_name + ", and welcome to the Process Mining Bot!")
     markup = types.ForceReply(selective=False)
@@ -95,6 +97,7 @@ def new_log_file(message):
     if check_registration(message):
         if message.document.mime_type == "application/xml" and message.document.file_name.split(".")[-1] == "xes":
             if int(message.document.file_size) <= (MAX_FILE_SIZE_IN_MB * 1000000):
+                tracker.track(message.chat.id, "newXesLog")
                 file_info = bot.get_file(message.document.file_id)
                 file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
                 pm.set_log(message.chat.id, file.content, message.document.file_name)
@@ -105,6 +108,7 @@ def new_log_file(message):
                 bot.reply_to(message, "Ops, currently, I support only files smaller than " + str(MAX_FILE_SIZE_IN_MB) + "MB")
         elif message.document.mime_type == "application/zip" and message.document.file_name.split(".")[-1] == "zip":
             if int(message.document.file_size) <= (MAX_FILE_SIZE_IN_MB * 1000000):
+                tracker.track(message.chat.id, "newZipLog")
                 file_info = bot.get_file(message.document.file_id)
                 file = requests.get('https://api.telegram.org/file/bot{0}/{1}'.format(API_TOKEN, file_info.file_path))
                 new_file, tmp_zip = tempfile.mkstemp()
@@ -155,6 +159,7 @@ def new_log_file(message):
 def describe_log(message):
     if check_registration(message):
         if start_processing(message): return
+        tracker.track(message.chat.id, "describelog")
         description = pm.describe_log(message.chat.id)
         textual_description = "<b>Total number of traces:</b> " + str(description["traces"]) + "\n"
         textual_description += "<b>Activities with frequencies</b>:\n"
@@ -175,6 +180,7 @@ def describe_log(message):
 def alpha_miner(message):
     if check_registration(message):
         if start_processing(message): return
+        tracker.track(message.chat.id, "alpha")
         bot.send_chat_action(message.chat.id, STATUS_UPLOAD_PICTURE)
         model = pm.bot_alpha_miner(message.chat.id)
         bot.send_photo(message.chat.id, open(model, "rb"))
@@ -185,6 +191,7 @@ def alpha_miner(message):
 def dependency_graph(message):
     if check_registration(message):
         if start_processing(message): return
+        tracker.track(message.chat.id, "dfg")
         bot.send_chat_action(message.chat.id, STATUS_UPLOAD_PICTURE)
         model = pm.bot_dfg(message.chat.id)
         bot.send_photo(message.chat.id, open(model, "rb"))
@@ -195,6 +202,7 @@ def dependency_graph(message):
 def hm(message):
     if check_registration(message):
         if start_processing(message): return
+        tracker.track(message.chat.id, "hm")
         args = message.text.split()
         dep_threshold = 0.99
         if len(args) == 2:
@@ -213,6 +221,7 @@ def hm(message):
 def bot_inductive_miner(message):
     if check_registration(message):
         if start_processing(message): return
+        tracker.track(message.chat.id, "im")
         pic_file = promexecutor.inductive_miner(PROM_LITE, message.chat.id)
         bot.send_chat_action(message.chat.id, STATUS_UPLOAD_PICTURE)
         bot.send_photo(message.chat.id, open(pic_file, "rb"))
@@ -223,6 +232,7 @@ def bot_inductive_miner(message):
 def dotted_chart(message):
     if check_registration(message):
         if start_processing(message): return
+        tracker.track(message.chat.id, "dottedchart")
         pic = rexecutor.run_r_code(R_SCRIPT,
                                    R_SCRIPTS_FOLDER + "static_dotted_chart.R",
                                    pm.get_property(message.chat.id, "current_log"))
@@ -235,6 +245,7 @@ def dotted_chart(message):
 def relative_dotted_chart(message):
     if check_registration(message):
         if start_processing(message): return
+        tracker.track(message.chat.id, "relativedottedchart")
         pic = rexecutor.run_r_code(R_SCRIPT,
                                    R_SCRIPTS_FOLDER + "relative_dotted_chart.R",
                                    pm.get_property(message.chat.id, "current_log"))
@@ -247,6 +258,7 @@ def relative_dotted_chart(message):
 def precedence_matrix(message):
     if check_registration(message):
         if start_processing(message): return
+        tracker.track(message.chat.id, "precedencematrix")
         pic = rexecutor.run_r_code(R_SCRIPT,
                                    R_SCRIPTS_FOLDER + "precedence_matrix.R",
                                    pm.get_property(message.chat.id, "current_log"))
@@ -259,6 +271,7 @@ def precedence_matrix(message):
 def precedence_matrix(message):
     if check_registration(message):
         if start_processing(message): return
+        tracker.track(message.chat.id, "resources")
         pic = rexecutor.run_r_code(R_SCRIPT,
                                    R_SCRIPTS_FOLDER + "resource_frequencies.R",
                                    pm.get_property(message.chat.id, "current_log"))
@@ -291,6 +304,7 @@ def filter_per_activities_to_keep(message):
         if start_processing(message, no_positive_message=True): return
         activities_to_keep = []
         chat_id = message.chat.id
+        tracker.track(chat_id, "keepactivities")
         activities = pm.get_all_activities(chat_id)
         markup = types.ReplyKeyboardMarkup(row_width=1)
         for a in activities:
@@ -307,6 +321,7 @@ def revert_filter(message):
     if check_registration(message):
         if start_processing(message, no_positive_message=True): return
         chat_id = message.chat.id
+        tracker.track(chat_id, "removefilters")
         pm.reset_filter(chat_id)
         bot.send_chat_action(chat_id, STATUS_TYPING)
         bot.send_message(chat_id, "I restored the log to its original form")
@@ -314,4 +329,4 @@ def revert_filter(message):
 
 
 print("Started")
-bot.polling()
+# bot.polling()
