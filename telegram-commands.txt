@@ -2,8 +2,8 @@ start - Starts a new session
 describelog - General log statistics
 hm - [DEP_THR] Heuristics Miner algorithm
 alpha - Alpha Miner algorithm
+im - Inductive Miner algorithm
 dfg - Direct Following Graph
-im - Inductive Miner
 precedencematrix - Precedence matrix
 dottedchart - Plots dot chart with absolute time
 relativedottedchart - Plots dot chart with relative time
